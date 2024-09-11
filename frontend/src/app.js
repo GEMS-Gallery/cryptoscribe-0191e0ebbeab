@@ -1,24 +1,20 @@
 import { backend } from 'declarations/backend';
 
 let quill;
+let postModal;
 
 document.addEventListener('DOMContentLoaded', async () => {
     quill = new Quill('#editor', {
         theme: 'snow'
     });
 
+    postModal = new bootstrap.Modal(document.getElementById('postModal'));
+
     const newPostBtn = document.getElementById('newPostBtn');
-    const modal = document.getElementById('modal');
     const newPostForm = document.getElementById('newPostForm');
 
     newPostBtn.addEventListener('click', () => {
-        modal.style.display = 'block';
-    });
-
-    window.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
+        postModal.show();
     });
 
     newPostForm.addEventListener('submit', async (e) => {
@@ -32,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await backend.createPost(title, body, author);
             if ('ok' in result) {
                 await fetchAndDisplayPosts();
-                modal.style.display = 'none';
+                postModal.hide();
                 newPostForm.reset();
                 quill.setContents([]);
             } else {
@@ -76,12 +72,14 @@ async function fetchAndDisplayPosts() {
 
 function showSpinner() {
     const spinner = document.createElement('div');
-    spinner.className = 'spinner';
+    spinner.className = 'spinner-border text-primary';
+    spinner.setAttribute('role', 'status');
+    spinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
     document.body.appendChild(spinner);
 }
 
 function hideSpinner() {
-    const spinner = document.querySelector('.spinner');
+    const spinner = document.querySelector('.spinner-border');
     if (spinner) {
         spinner.remove();
     }
