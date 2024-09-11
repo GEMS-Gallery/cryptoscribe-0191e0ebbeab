@@ -1,6 +1,7 @@
 import { AuthClient } from "@dfinity/auth-client";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory } from 'declarations/backend/backend.did.js';
+import { canisterId } from 'declarations/backend/index.js';
 
 let authClient;
 let actor;
@@ -94,9 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function initActor() {
     const identity = await authClient.getIdentity();
-    const host = process.env.CANISTER_ID_BACKEND;
+    const host = "https://icp0.io";
     const agent = new HttpAgent({ identity, host });
-    actor = Actor.createActor(idlFactory, { agent, canisterId: host });
+    actor = Actor.createActor(idlFactory, { agent, canisterId });
 }
 
 async function checkAuth() {
