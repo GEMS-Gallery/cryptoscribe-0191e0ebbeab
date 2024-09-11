@@ -1,7 +1,11 @@
+import { AuthClient } from "@dfinity/auth-client";
+import { Actor, HttpAgent } from "@dfinity/agent";
 import { backend } from 'declarations/backend';
 
+let authClient;
 let quill;
 let postModal;
+let isAuthenticated = false;
 
 const routes = {
     '/': homePage,
@@ -17,13 +21,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const newPostBtn = document.getElementById('newPostBtn');
     const newPostForm = document.getElementById('newPostForm');
+    const authButton = document.getElementById('authButton');
+
+    authClient = await AuthClient.create();
+    await checkAuth();
+
+    authButton.onclick = async () => {
+        if (isAuthenticated) {
+            await authClient.logout();
+            isAuthenticated = false;
+            authButton.textContent = 'Login';
+            newPostBtn.style.display = 'none';
+        } else {
+            await authClient.login({
+                identityProvider: "https://identity.ic0.app/#authorize",
+                onSuccess: async () => {
+                    isAuthenticated = true;
+                    authButton.textContent = 'Logout';
+                    newPostBtn.style.display = 'inline-block';
+                    await checkAuth();
+                }
+            });
+        }
+    };
 
     newPostBtn.addEventListener('click', () => {
-        postModal.show();
+        if (isAuthenticated) {
+            postModal.show();
+        } else {
+            alert('Please login to create a post');
+        }
     });
 
     newPostForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!isAuthenticated) {
+            alert('Please login to create a post');
+            return;
+        }
         const title = document.getElementById('title').value;
         const author = document.getElementById('author').value;
         const body = quill.root.innerHTML;
@@ -51,6 +86,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await router();
 });
+
+async function checkAuth() {
+    isAuthenticated = await authClient.isAuthenticated();
+    const authButton = document.getElementById('authButton');
+    const newPostBtn = document.getElementById('newPostBtn');
+    if (isAuthenticated) {
+        authButton.textContent = 'Logout';
+        newPostBtn.style.display = 'inline-block';
+    } else {
+        authButton.textContent = 'Login';
+        newPostBtn.style.display = 'none';
+    }
+}
 
 async function router() {
     const path = window.location.pathname;

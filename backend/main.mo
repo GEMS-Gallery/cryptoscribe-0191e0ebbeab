@@ -6,41 +6,44 @@ import List "mo:base/List";
 import Time "mo:base/Time";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
+import Principal "mo:base/Principal";
 
 actor {
-  // Define the Post type
   type Post = {
     id: Nat;
     title: Text;
     body: Text;
     author: Text;
     timestamp: Time.Time;
+    creator: Principal;
   };
 
-  // Stable variable to store posts
   stable var posts : List.List<Post> = List.nil();
   stable var nextId : Nat = 0;
 
-  // Create a new post
-  public func createPost(title: Text, body: Text, author: Text) : async Result.Result<Post, Text> {
+  public shared(msg) func createPost(title: Text, body: Text, author: Text) : async Result.Result<Post, Text> {
+    let caller = msg.caller;
+    if (Principal.isAnonymous(caller)) {
+      return #err("Authentication required");
+    };
+
     let post : Post = {
       id = nextId;
       title = title;
       body = body;
       author = author;
       timestamp = Time.now();
+      creator = caller;
     };
     posts := List.push(post, posts);
     nextId += 1;
     #ok(post)
   };
 
-  // Get all posts
   public query func getPosts() : async [Post] {
     List.toArray(posts)
   };
 
-  // Get a specific post by ID
   public query func getPost(id: Nat) : async Result.Result<Post, Text> {
     switch (List.find(posts, func (p: Post) : Bool { p.id == id })) {
       case (null) { #err("Post not found") };
@@ -48,12 +51,11 @@ actor {
     }
   };
 
-  // System functions for upgrades
-  system func preupgrade() {
-    // No need to do anything as we're using a stable variable
+  public shared(msg) func getMyPrincipal() : async Principal {
+    msg.caller
   };
 
-  system func postupgrade() {
-    // No need to do anything as we're using a stable variable
-  };
+  system func preupgrade() {};
+
+  system func postupgrade() {};
 }
