@@ -41,8 +41,11 @@ actor {
   };
 
   // Get a specific post by ID
-  public query func getPost(id: Nat) : async ?Post {
-    List.find(posts, func (p: Post) : Bool { p.id == id })
+  public query func getPost(id: Nat) : async Result.Result<Post, Text> {
+    switch (List.find(posts, func (p: Post) : Bool { p.id == id })) {
+      case (null) { #err("Post not found") };
+      case (?post) { #ok(post) };
+    }
   };
 
   // System functions for upgrades

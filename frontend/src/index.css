@@ -33,3 +33,13 @@ body {
     display: none;
     margin: 2rem auto;
 }
+
+.post-title {
+    cursor: pointer;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.post-title:hover {
+    text-decoration: underline;
+}
