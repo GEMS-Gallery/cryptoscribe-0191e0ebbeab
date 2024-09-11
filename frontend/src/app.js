@@ -1,8 +1,9 @@
 import { AuthClient } from "@dfinity/auth-client";
 import { Actor, HttpAgent } from "@dfinity/agent";
-import { backend } from 'declarations/backend';
+import { idlFactory } from 'declarations/backend/backend.did.js';
 
 let authClient;
+let actor;
 let quill;
 let postModal;
 let isAuthenticated = false;
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isAuthenticated) {
             await authClient.logout();
             isAuthenticated = false;
+            actor = null;
             authButton.textContent = 'Login';
             newPostBtn.style.display = 'none';
         } else {
@@ -37,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 identityProvider: "https://identity.ic0.app/#authorize",
                 onSuccess: async () => {
                     isAuthenticated = true;
+                    await initActor();
                     authButton.textContent = 'Logout';
                     newPostBtn.style.display = 'inline-block';
                     await checkAuth();
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             showSpinner();
-            const result = await backend.createPost(title, body, author);
+            const result = await actor.createPost(title, body, author);
             if ('ok' in result) {
                 await router();
                 postModal.hide();
@@ -73,9 +76,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 quill.setContents([]);
             } else {
                 console.error('Failed to create post:', result.err);
+                alert('Failed to create post: ' + result.err);
             }
         } catch (error) {
             console.error('Error creating post:', error);
+            alert('Error creating post: ' + error.message);
         } finally {
             hideSpinner();
         }
@@ -87,14 +92,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     await router();
 });
 
+async function initActor() {
+    const identity = await authClient.getIdentity();
+    const host = process.env.CANISTER_ID_BACKEND;
+    const agent = new HttpAgent({ identity, host });
+    actor = Actor.createActor(idlFactory, { agent, canisterId: host });
+}
+
 async function checkAuth() {
     isAuthenticated = await authClient.isAuthenticated();
     const authButton = document.getElementById('authButton');
     const newPostBtn = document.getElementById('newPostBtn');
     if (isAuthenticated) {
+        await initActor();
         authButton.textContent = 'Logout';
         newPostBtn.style.display = 'inline-block';
     } else {
+        actor = null;
         authButton.textContent = 'Login';
         newPostBtn.style.display = 'none';
     }
@@ -122,7 +136,7 @@ async function postPage() {
 
     try {
         showSpinner();
-        const result = await backend.getPost(Number(postId));
+        const result = await actor.getPost(Number(postId));
         if ('ok' in result) {
             const post = result.ok;
             app.innerHTML = `
@@ -145,7 +159,7 @@ async function postPage() {
 async function fetchAndDisplayPosts() {
     try {
         showSpinner();
-        const posts = await backend.getPosts();
+        const posts = await actor.getPosts();
         const postsContainer = document.getElementById('posts');
         postsContainer.innerHTML = '';
 
